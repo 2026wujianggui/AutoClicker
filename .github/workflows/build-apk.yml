@@ -3,27 +3,52 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
-      - uses: android-actions/setup-android@v3
-      - name: Install SDK
+          java-version: '17'
+
+      - name: Setup Android SDK
         run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          export ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "--- SDK 目录 ---"
+          ls "$ANDROID_HOME" || true
+          echo "--- 已有平台 ---"
+          ls "$ANDROID_HOME/platforms" || true
+          echo "--- 已有构建工具 ---"
+          ls "$ANDROID_HOME/build-tools" || true
+
+      - name: Ensure platform 34
+        run: |
+          export ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}
+          SM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ -x "$SM" ]; then
+            yes | "$SM" --licenses > /dev/null 2>&1 || true
+            "$SM" "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
+          fi
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          cat local.properties
+          echo "--- 安装后平台 ---"
+          ls "$ANDROID_HOME/platforms" || true
+
       - name: Build
         run: |
-          echo "sdk.dir=$ANDROID_HOME" > local.properties
           curl -sL -o /tmp/g.zip https://services.gradle.org/distributions/gradle-8.2-bin.zip
           sudo unzip -q -o /tmp/g.zip -d /opt
           export PATH=/opt/gradle-8.2/bin:$PATH
+          gradle --version | head -3
           gradle assembleDebug --no-daemon --stacktrace
+
       - uses: actions/upload-artifact@v4
         with:
           name: AutoClicker-debug-apk
