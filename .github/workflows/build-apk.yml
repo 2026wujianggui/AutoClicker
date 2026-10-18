@@ -13,17 +13,17 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
-      - name: build
+      - name: Install SDK
         run: |
-          if [ -f gradlew ]; then
-            chmod +x gradlew
-            ./gradlew assembleDebug --no-daemon --stacktrace
-          else
-            curl -sL -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.2-bin.zip
-            sudo unzip -q -o /tmp/gradle.zip -d /opt
-            export PATH=/opt/gradle-8.2/bin:$PATH
-            gradle assembleDebug --no-daemon --stacktrace
-          fi
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+      - name: Build
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          curl -sL -o /tmp/g.zip https://services.gradle.org/distributions/gradle-8.2-bin.zip
+          sudo unzip -q -o /tmp/g.zip -d /opt
+          export PATH=/opt/gradle-8.2/bin:$PATH
+          gradle assembleDebug --no-daemon --stacktrace
       - uses: actions/upload-artifact@v4
         with:
           name: AutoClicker-debug-apk
