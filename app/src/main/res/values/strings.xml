@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">自动点击器</string>
+    <string name="service_name">自动点击服务</string>
+    <string name="accessibility_description">用于在你指定的屏幕位置执行自动点击，请仅在需要时使用，并可在系统设置中随时关闭。</string>
+</resources>
