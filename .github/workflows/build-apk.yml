@@ -4,6 +4,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,12 +24,6 @@ jobs:
           export ANDROID_SDK_ROOT=$ANDROID_HOME
           echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "--- SDK 目录 ---"
-          ls "$ANDROID_HOME" || true
-          echo "--- 已有平台 ---"
-          ls "$ANDROID_HOME/platforms" || true
-          echo "--- 已有构建工具 ---"
-          ls "$ANDROID_HOME/build-tools" || true
 
       - name: Ensure platform 34
         run: |
@@ -37,19 +34,29 @@ jobs:
             "$SM" "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
           fi
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          cat local.properties
-          echo "--- 安装后平台 ---"
-          ls "$ANDROID_HOME/platforms" || true
 
       - name: Build
         run: |
           curl -sL -o /tmp/g.zip https://services.gradle.org/distributions/gradle-8.2-bin.zip
           sudo unzip -q -o /tmp/g.zip -d /opt
           export PATH=/opt/gradle-8.2/bin:$PATH
-          gradle --version | head -3
           gradle assembleDebug --no-daemon --stacktrace
 
       - uses: actions/upload-artifact@v4
         with:
           name: AutoClicker-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Publish APK to apk branch
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk /tmp/AutoClicker.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch origin apk 2>/dev/null || true
+          git checkout -B apk origin/apk 2>/dev/null || git checkout --orphan apk
+          git rm -rf --quiet . 2>/dev/null || true
+          cp /tmp/AutoClicker.apk AutoClicker.apk
+          git add -f AutoClicker.apk
+          git commit -m "auto publish apk" || echo "no change"
+          git push -f origin apk
